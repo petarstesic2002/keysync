@@ -1,6 +1,5 @@
-import { Essentia } from 'essentia.js';
+import { Essentia, EssentiaWASM } from 'essentia.js';
 import { decode } from 'wav-decoder';
-import EssentiaWASM from 'essentia.js/dist/essentia-wasm.es.js';
 
 /**
  * Audio analysis result structure
