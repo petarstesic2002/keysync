@@ -7,11 +7,11 @@ export interface EncodeOptions {
     quality?: number;
 };
 
-export interface AudioEncoder {
+export interface AudioEncoderBase {
     encode(channelData: Float32Array[], options: EncodeOptions): Promise<Buffer>;
 };
 
-export class WavEncoder implements AudioEncoder {
+export class WavEncoder implements AudioEncoderBase {
     async encode(channelData: Float32Array[], options: EncodeOptions): Promise<Buffer> {
         const { sampleRate, bitDepth = 16, channels = channelData.length } = options;
         const samples = channelData[0].length;
