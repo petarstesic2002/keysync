@@ -12,7 +12,7 @@ const passedBuffer = Buffer.from(workerData.buffer);
 
 function decodeWav(buffer: Buffer): AudioData{
     if(buffer.toString('ascii', 0, 4) !== 'RIFF')
-    throw new Error('Invalid WAV file: Missing RIFF header.');
+        throw new Error('Invalid WAV file: Missing RIFF header.');
 
     if(buffer.toString('ascii', 8, 12) !== 'WAVE')
         throw new Error('Invalid WAV file: Missing WAVE format.');

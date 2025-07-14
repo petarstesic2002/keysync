@@ -57,38 +57,6 @@ function generateTestWav(): Buffer {
 return buffer;
 }
 
-function generateBetterTestWav(bpm = 90): Buffer {
-    const sampleRate = 44100;
-    const duration = 10; // Longer duration helps analysis
-    const numSamples = sampleRate * duration;
-
-    const buffer = Buffer.alloc(44 + numSamples * 2);
-    
-    // ... (same header code as before) ...
-
-    // Generate rich harmonic content
-    const beatInterval = (60 / bpm) * sampleRate;
-    let lastBeatPos = 0;
-
-    for (let i = 0; i < numSamples; i++) {
-        // Add percussion transient every beat
-        let sample = 0;
-        if (i - lastBeatPos >= beatInterval) {
-            sample += 0.3 * Math.exp(-0.0001 * (i - lastBeatPos)); // Decaying click
-            lastBeatPos = i;
-        }
-
-        // Add harmonic-rich tone (square wave works better than sine)
-        const phase = (i / sampleRate) * 440 * 2 * Math.PI;
-        sample += 0.4 * (Math.sign(Math.sin(phase))); // Square wave
-
-        // Write 16-bit sample
-        buffer.writeInt16LE(Math.floor(sample * 32767), 44 + i * 2);
-    }
-
-    return buffer;
-}
-
 function generateMusicalTestWav(): Buffer {
     // Audio parameters
     const sampleRate = 44100;
