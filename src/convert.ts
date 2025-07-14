@@ -1,5 +1,4 @@
 import decode from 'audio-decode';
-import { decodePcmData, findChunk } from './audio-utils';
 import { Worker } from 'worker_threads';
 import path from 'path';
 
@@ -35,13 +34,15 @@ export async function decodeAudio(
         case 'wav':
             return await decodeWavAsync(buffer);
         case 'mp3':
-            return await decodeMp3Async(buffer);
+        case 'flac':
+        case 'ogg':
+            return await decodeToCommonFormatAsync(buffer);
         default:
             throw new Error(`Unsupported audio format: ${format}`);
     }
 }
 
-async function decodeMp3Async(buffer: Buffer): Promise<AudioData>{
+async function decodeToCommonFormatAsync(buffer: Buffer): Promise<AudioData> {
     try{
         const arrBuffer: ArrayBuffer = buffer.buffer.slice(
             buffer.byteOffset,
