@@ -69,8 +69,11 @@ async function decodeToCommonFormatAsync(buffer: Buffer): Promise<AudioData> {
 async function decodeWavAsync(buffer: Buffer): Promise<AudioData>{
     return new Promise((resolve, reject) => {
         const worker = new Worker(
-            path.join(__dirname, 'workers', 'wav-decoder-worker.ts'), 
-            { workerData: { buffer } }
+            path.join(__dirname, 'wav-decoder-worker.ts'), 
+            { 
+                workerData: { buffer },
+                transferList: [buffer.buffer]
+            }
         );
 
         worker.on('message', (message) => {

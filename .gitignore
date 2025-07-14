@@ -15,4 +15,4 @@ Thumbs.db
 
 coverage/
 
-test/assets/
+/test/assets/

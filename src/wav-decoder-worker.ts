@@ -1,6 +1,14 @@
 import { parentPort, workerData } from "worker_threads";
-import { decodePcmData, findChunk } from "../audio-utils";
-import { AudioData } from "../convert";
+import path from "path";
+import type { AudioData } from "./convert";
+import { fileURLToPath } from "url";
+
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+const utilsPath = path.join(dirname, 'audio-utils.ts');
+
+const {findChunk, decodePcmData} = await import(utilsPath);
+
+const passedBuffer = Buffer.from(workerData.buffer);
 
 function decodeWav(buffer: Buffer): AudioData{
     if(buffer.toString('ascii', 0, 4) !== 'RIFF')
@@ -44,7 +52,7 @@ function decodeWav(buffer: Buffer): AudioData{
 }
 
 try{
-    const result = decodeWav(workerData.buffer);
+    const result = decodeWav(passedBuffer);
     parentPort?.postMessage({ result });
 }catch(err){
     parentPort?.postMessage({ error: err instanceof Error ? err.message : String(err) });

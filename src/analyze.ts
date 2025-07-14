@@ -1,5 +1,5 @@
 import { Essentia, EssentiaWASM } from 'essentia.js';
-import { decode } from 'wav-decoder';
+import { AudioFormat, decodeAudio } from './convert';
 
 /**
  * Audio analysis result structure
@@ -61,6 +61,7 @@ export function cleanupEssentia(): void{
  * Analyze a WAV audio buffer and extracts BPM, key and scale
  * @param {Buffer} buffer - Audio file buffer (WAV format recommended)
  * @param {number} chunkSize - Optional chunk size samples (default 1323000 / 30s at 44.1kHz)
+ * @param {AudioFormat} format - Audio format that will be decoded (WAV, MP3, FLAC, OGG)
  * @returns {Promise<AnalysisResult>} Object containing:
  *  - bpm: Float precision BPM
  *  - roundedBpm: Integer rounded BPM
@@ -70,10 +71,10 @@ export function cleanupEssentia(): void{
  * 
  * @example
  * const audioBuffer = await fs.readFile('track.wav');
- * const { roundedBpm, bpm, key, scale, confidence } = await analyzeAudioAsync(audiBuffer);
+ * const { roundedBpm, bpm, key, scale, confidence } = await analyzeAudioAsync(audioBuffer);
  */
-export async function analyzeAudioAsync(buffer: Buffer, chunkSize: number = 44100 * 30): Promise<AnalysisResult> {
-    const decoded = await decode(buffer);
+export async function analyzeAudioAsync(buffer: Buffer, format: AudioFormat, chunkSize: number = 44100 * 30): Promise<AnalysisResult> {
+    const decoded = await decodeAudio(buffer, format);
     const audio = decoded.channelData[0];
 
     const result: AnalysisResult = {
