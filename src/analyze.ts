@@ -54,7 +54,6 @@ export function cleanupEssentia(): void{
     essentiaInstance = null;
 }
 
-//TODO: make a function that converts audio to buffer
 //TODO: make a function that converts other audio formats to wav
 
 /**
