@@ -1,4 +1,4 @@
-import decode, {decoders} from 'audio-decode';
+import decode from 'audio-decode';
 
 /**
  * Supported audio formats
@@ -14,16 +14,29 @@ export interface AudioConversionOptions {
     channels?: number;
     quality?: number;
     outputFile?: string;
-    progressCallback?: (progress: number) => void;
 };
 
-interface AudioData {
+export interface AudioData {
     sampleRate: number;
     channelData: Float32Array[];
     numChannels: number;
     duration: number;
     bitDepth: number;
 };
+
+export async function decodeAudio(
+    buffer: Buffer,
+    format: AudioFormat
+): Promise<AudioData> {
+    switch(format){
+        case 'wav':
+            return await decodeWavAsync(buffer);
+        case 'mp3':
+            return await decodeMp3Async(buffer);
+        default:
+            throw new Error(`Unsupported audio format: ${format}`);
+    }
+}
 
 async function decodeMp3Async(buffer: Buffer): Promise<AudioData>{
     try{
@@ -49,44 +62,52 @@ async function decodeMp3Async(buffer: Buffer): Promise<AudioData>{
     }
 }
 
-function decodeWav(buffer: Buffer): AudioData{
-    if(buffer.toString('ascii', 0, 4) !== 'RIFF')
-        throw new Error('Invalid WAV file: Missing RIFF header.');
-    if(buffer.toString('ascii', 8, 12) !== 'WAVE')
-        throw new Error('Invalid WAV file: Missing WAVE format.');
+async function decodeWavAsync(buffer: Buffer): Promise<AudioData>{
+    return new Promise((resolve, reject) => {
+        try{
+            if(buffer.toString('ascii', 0, 4) !== 'RIFF')
+            throw new Error('Invalid WAV file: Missing RIFF header.');
 
-    const fmtChunkOffset = findChunk(buffer, 'fmt ');
-    if(fmtChunkOffset === -1)
-        throw new Error('Invalid WAV file: Missing fmt chunk.');
+            if(buffer.toString('ascii', 8, 12) !== 'WAVE')
+                throw new Error('Invalid WAV file: Missing WAVE format.');
+
+            const fmtChunkOffset = findChunk(buffer, 'fmt ');
+            if(fmtChunkOffset === -1)
+                throw new Error('Invalid WAV file: Missing fmt chunk.');
+            
+            const audioFormat = buffer.readUint16LE(fmtChunkOffset + 8);
+            if(audioFormat !== 1)
+                throw new Error('Only PCM (uncompressed) WAV files are supported.');
+
+            const numChannels = buffer.readUint16LE(fmtChunkOffset + 10);
+            const sampleRate = buffer.readUint32LE(fmtChunkOffset + 12);
+            const bitDepth = buffer.readUint16LE(fmtChunkOffset + 22);
+            
+            const dataChunkOffset = findChunk(buffer, 'data');
+            if(dataChunkOffset === -1)
+                throw new Error('Invalid WAV file: Missing data chunk');
+            
+            const dataSize = buffer.readUint32LE(dataChunkOffset + 4);
+            const start = dataChunkOffset + 8;
+
+            const channelData = decodePcmData(
+                buffer.subarray(start, start + dataSize),
+                numChannels,
+                bitDepth
+            );
+
+            resolve({
+                sampleRate,
+                numChannels,
+                channelData,
+                duration: dataSize / (sampleRate * numChannels * (bitDepth / 8)),
+                bitDepth
+            });
+        }catch(err){
+            reject(err);
+        }
+    })
     
-    const audioFormat = buffer.readUint16LE(fmtChunkOffset + 8);
-    if(audioFormat !== 1)
-        throw new Error('Only PCM (uncompressed) WAV files are supported.');
-
-    const numChannels = buffer.readUint16LE(fmtChunkOffset + 10);
-    const sampleRate = buffer.readUint32LE(fmtChunkOffset + 12);
-    const bitDepth = buffer.readUint16LE(fmtChunkOffset + 22);
-    
-    const dataChunkOffset = findChunk(buffer, 'data');
-    if(dataChunkOffset === -1)
-        throw new Error('Invalid WAV file: Missing data chunk');
-    
-    const dataSize = buffer.readUint32LE(dataChunkOffset + 4);
-    const start = dataChunkOffset + 8;
-
-    const channelData = decodePcmData(
-        buffer.subarray(start, start + dataSize),
-        numChannels,
-        bitDepth
-    );
-
-    return {
-        sampleRate,
-        numChannels,
-        channelData,
-        duration: dataSize / (sampleRate * numChannels * (bitDepth / 8)),
-        bitDepth
-    };
 }
 
 function findChunk(buffer: Buffer, chunkId: string): number{
