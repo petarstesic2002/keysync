@@ -2,8 +2,18 @@ import { Essentia } from 'essentia.js';
 import { decode } from 'wav-decoder';
 import EssentiaWASM from 'essentia.js/dist/essentia-wasm.es.js';
 
+/**
+ * Audio analysis result structure
+ * @typedef {Object} AnalysisResult
+ * @property {number|null} bpm - Precise BPM (float)
+ * @property {number|null} roundedBpm - Rounded BPM (int)
+ * @property {string|null} key - Detected musical key
+ * @property {'major'|'minor'|null} scale - Detected musical scale
+ * @property {number} [confidence] - Detection confidence (0 - 1)
+ */
 export interface AnalysisResult {
     bpm: number | null;
+    roundedBpm: number | null
     key: string | null;
     scale: 'major' | 'minor' | null;
     confidence?: number;
@@ -11,6 +21,14 @@ export interface AnalysisResult {
 
 let essentiaInstance: Essentia | null = null;
 
+
+/**
+ * Initializes and returns a singleton Essentia.js instance with WebAssembly backend
+ * @returns {Promise<Essentia>} Initialized Essentia instance
+ * @example
+ * const essentia = await initEssentia();
+ * const spectrum = essentia.Spectrum(audioData)
+ */
 async function initEssentia(): Promise<Essentia> {
     if(essentiaInstance)
         return essentiaInstance;
@@ -25,7 +43,12 @@ async function initEssentia(): Promise<Essentia> {
 }
 
 /**
- * Clean up Essentia resources
+ * Cleans up Essentia resources and releases WebAssembly memory. 
+ * Must be called after analysis to avoid memory leaks
+ * 
+ * @example
+ * await analyzeAudioAsync(buffer);
+ * cleanupEssentia();
  */
 export function cleanupEssentia(): void{
     essentiaInstance?.shutdown();
@@ -33,15 +56,26 @@ export function cleanupEssentia(): void{
 }
 
 /**
- * Analyze a WAV buffer and return BPM, key and scale
- * @param buffer Buffer<ArrayBufferLike>
- * @returns Promise<AnalysisResult>
+ * Analyze a WAV audio buffer and extracts BPM, key and scale
+ * @param {Buffer} buffer - Audio file buffer (WAV format recommended)
+ * @param {number} chunkSize - Optional chunk size samples (default 1323000 / 30s at 44.1kHz)
+ * @returns {Promise<AnalysisResult>} Object containing:
+ *  - bpm: Float precision BPM
+ *  - roundedBpm: Integer rounded BPM
+ *  - key: Detected musical key
+ *  - scale: 'major' or 'minor'
+ *  - confidence: Detection confidence score (0 - 1)
+ * 
+ * @example
+ * const audioBuffer = await fs.readFile('track.wav');
+ * const { roundedBpm, bpm, key, scale, confidence } = await analyzeAudioAsync(audiBuffer);
  */
-export async function analyzeAudioAsync(buffer: Buffer, chunkSize: number = 44100*30): Promise<AnalysisResult> {
+export async function analyzeAudioAsync(buffer: Buffer, chunkSize: number = 44100 * 30): Promise<AnalysisResult> {
     const decoded = await decode(buffer);
     const audio = decoded.channelData[0];
 
     const result: AnalysisResult = {
+        roundedBpm: null,
         bpm: null,
         key: null,
         scale: null
@@ -57,7 +91,9 @@ export async function analyzeAudioAsync(buffer: Buffer, chunkSize: number = 4410
             if(!result.bpm){
                 const rhythm = essentia.RhythmExtractor2013(vectorFloat);
                 result.bpm = rhythm.bpm
+                result.roundedBpm = Math.round(result.bpm);
             }
+
             const keyInfo = essentia.KeyExtractor(
                 vectorFloat, // Float32Array
                 true, // Apply detuning correction
@@ -83,6 +119,8 @@ export async function analyzeAudioAsync(buffer: Buffer, chunkSize: number = 4410
         }
     } catch(err) {
         console.warn('Failed to analyze audio:', err);
+    } finally{
+        cleanupEssentia();
     }
     return result;
 }
