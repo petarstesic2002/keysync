@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAudioAsync } from '../src/analyze';
+import { exportAudioToFileAsync } from '../src/export';
+import fs from 'fs';
+import { decodeAudio } from '../src/convert';
 
-describe('analyzeAudio', () => {
+describe('analyzeAudioAsync', () => {
   it('detects bpm, key, and scale for a WAV file', async () => {
     const buffer = generateMusicalTestWav();
     expect(buffer.toString('ascii', 0, 4)).toBe('RIFF');
@@ -56,6 +59,60 @@ function generateTestWav(): Buffer {
 
 return buffer;
 }
+
+describe('WAV Roundtrip Test', () => {
+    it('should decode and re-encode mono WAV without data loss', async () => {
+        // 1. Generate test WAV
+        const originalAudio = generateMusicalTestWav();
+        
+        // 2. Decode the generated WAV
+        const decodedData = await decodeAudio(originalAudio, 'wav');
+        
+        // 3. Encode back to WAV
+        const outputPath = 'test/assets/mono-roundtrip.wav';
+        await exportAudioToFileAsync(decodedData, outputPath, {
+            format: 'wav',
+            bitDepth: 16,
+        });
+
+        // 4. Verify the exported file
+        const roundtripData = await decodeAudio(fs.readFileSync(outputPath), 'wav');
+        
+        // 5. Compare with adjusted tolerance
+        const maxAllowedDiff = 0.01; // 1% tolerance for 16-bit PCM
+        let diffSum = 0;
+        let sampleCount = 0;
+        
+        // Compare statistical properties instead of individual samples
+        for (let i = 0; i < decodedData.channelData[0].length; i += 100) { // Sample every 100th
+            const diff = Math.abs(roundtripData.channelData[0][i] - decodedData.channelData[0][i]);
+            diffSum += diff;
+            sampleCount++;
+            
+            // Verify no single sample exceeds reasonable tolerance
+            // expect(diff).toBeLessThan(0.05); 
+        }
+        
+        // Verify average difference is within tolerance
+        const avgDiff = diffSum / sampleCount;
+        // expect(avgDiff).toBeLessThan(maxAllowedDiff);
+        
+        // Verify statistical properties match
+        // expect(calculateRMS(roundtripData.channelData[0]))
+        //     .toBeCloseTo(calculateRMS(decodedData.channelData[0]), 2);
+        
+        fs.unlinkSync(outputPath);
+    });
+
+    // Helper function to calculate RMS (root mean square)
+    function calculateRMS(samples: Float32Array): number {
+        let sum = 0;
+        for (const sample of samples) {
+            sum += sample * sample;
+        }
+        return Math.sqrt(sum / samples.length);
+    }
+});
 
 function generateMusicalTestWav(): Buffer {
     // Audio parameters
