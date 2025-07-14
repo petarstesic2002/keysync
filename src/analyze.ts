@@ -120,7 +120,7 @@ export async function analyzeAudioAsync(buffer: Buffer, chunkSize: number = 4410
             }
         }
     } catch(err) {
-        console.warn('Failed to analyze audio:', err);
+        console.warn('Failed to analyze audio: ', err);
     } finally{
         cleanupEssentia();
     }
