@@ -1,3 +1,5 @@
+import decode, {decoders} from 'audio-decode';
+
 /**
  * Supported audio formats
  */
@@ -22,6 +24,30 @@ interface AudioData {
     duration: number;
     bitDepth: number;
 };
+
+async function decodeMp3Async(buffer: Buffer): Promise<AudioData>{
+    try{
+        const arrBuffer: ArrayBuffer = buffer.buffer.slice(
+            buffer.byteOffset,
+            buffer.byteOffset + buffer.byteLength
+        );
+        const audioBuffer = await decode(arrBuffer);
+        
+        const channelData: Float32Array[] = [];
+        for(let c = 0; c < audioBuffer.numberOfChannels; c++)
+            channelData.push(audioBuffer.getChannelData(0));
+
+        return{
+            sampleRate: audioBuffer.sampleRate,
+            channelData,
+            numChannels: audioBuffer.numberOfChannels,
+            duration: audioBuffer.duration,
+            bitDepth: 32
+        };
+    } catch(err){
+        throw new Error(`MP3 decoding failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+}
 
 function decodeWav(buffer: Buffer): AudioData{
     if(buffer.toString('ascii', 0, 4) !== 'RIFF')
