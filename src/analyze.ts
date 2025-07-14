@@ -51,8 +51,12 @@ async function initEssentia(): Promise<Essentia> {
  */
 export function cleanupEssentia(): void{
     essentiaInstance?.shutdown();
+    (essentiaInstance as any).delete();
     essentiaInstance = null;
 }
+
+//TODO: make a function that converts audio to buffer
+//TODO: make a function that converts other audio formats to wav
 
 /**
  * Analyze a WAV audio buffer and extracts BPM, key and scale
