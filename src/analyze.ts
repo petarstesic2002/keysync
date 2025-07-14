@@ -21,7 +21,6 @@ export interface AnalysisResult {
 
 let essentiaInstance: Essentia | null = null;
 
-
 /**
  * Initializes and returns a singleton Essentia.js instance with WebAssembly backend
  * @returns {Promise<Essentia>} Initialized Essentia instance
