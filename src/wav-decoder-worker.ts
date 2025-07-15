@@ -10,6 +10,11 @@ const {findChunk, decodePcmData} = await import(utilsPath);
 
 const passedBuffer = Buffer.from(workerData.buffer);
 
+/**
+ * 
+ * @param {Buffer} buffer - WAV Audio Buffer
+ * @returns {AudioData} Decoded Audio Data
+ */
 function decodeWav(buffer: Buffer): AudioData{
     if(buffer.toString('ascii', 0, 4) !== 'RIFF')
         throw new Error('Invalid WAV file: Missing RIFF header.');
