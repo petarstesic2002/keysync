@@ -100,7 +100,9 @@ async function decodeWavAsync(buffer: Buffer): Promise<AudioData>{
         const worker = new Worker(
             path.join(__dirname, 'wav-decoder-worker.ts'), 
             { 
-                workerData: { buffer },
+                workerData: {
+                    buffer: buffer.buffer,
+                },
                 transferList: [buffer.buffer]
             }
         );
