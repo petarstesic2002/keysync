@@ -7,6 +7,7 @@ export interface ExportOptions{
     format?: 'wav' | 'mp3' | 'ogg' | 'flac';
     bitDepth?: number;
     quality?: number;
+    channels?: number;
 };
 
 export async function exportAudioToFileAsync(
@@ -23,7 +24,7 @@ export async function exportAudioToFileAsync(
         {
             sampleRate: audioData.sampleRate,
             bitDepth: options.bitDepth || audioData.bitDepth,
-            channels: audioData.numChannels,
+            channels: options.channels || audioData.numChannels,
             quality: options.quality || 80
         }
     );

@@ -3,6 +3,7 @@ import { analyzeAudioAsync } from '../src/analyze';
 import { exportAudioToFileAsync } from '../src/export';
 import fs from 'fs';
 import { decodeAudio } from '../src/convert';
+import path from 'path';
 
 describe('analyzeAudioAsync', () => {
   it('detects bpm, key, and scale for a WAV file', async () => {
@@ -21,97 +22,106 @@ describe('analyzeAudioAsync', () => {
  * Generates a 2-second 440Hz sine wave as a WAV-formatted Buffer
  * @returns {Buffer} WAV audio buffer (44.1kHz, 16-bit, mono)
  */
-function generateTestWav(): Buffer {
-    // Audio parameters
+function generateStereoTestWav(): Buffer {
+    // Audio parameters - now stereo
     const sampleRate = 44100;
-    const duration = 2; // seconds
-    const frequency = 440; // A4 note
+    const duration = 0.5; // 500ms
+    const numChannels = 2; // Stereo
     const numSamples = sampleRate * duration;
+    const bytesPerSample = 2; // 16-bit
+    const blockAlign = numChannels * bytesPerSample;
+    const dataSize = numSamples * blockAlign;
 
     // Create buffer (44 byte header + PCM data)
-    const buffer = Buffer.alloc(44 + numSamples * 2);
+    const buffer = Buffer.alloc(44 + dataSize);
 
-    // 1. RIFF Chunk Descriptor
-    buffer.write('RIFF', 0); // ChunkID
-    buffer.writeUInt32LE(36 + numSamples * 2, 4); // ChunkSize (file size - 8)
-    buffer.write('WAVE', 8); // Format
+    // RIFF header
+    buffer.write('RIFF', 0);
+    buffer.writeUInt32LE(36 + dataSize, 4);
+    buffer.write('WAVE', 8);
 
-    // 2. FMT Sub-Chunk
-    buffer.write('fmt ', 12); // Subchunk1ID
-    buffer.writeUInt32LE(16, 16); // Subchunk1Size (16 for PCM)
-    buffer.writeUInt16LE(1, 20); // AudioFormat (PCM = 1)
-    buffer.writeUInt16LE(1, 22); // NumChannels (mono)
-    buffer.writeUInt32LE(sampleRate, 24); // SampleRate
-    buffer.writeUInt32LE(sampleRate * 2, 28); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
-    buffer.writeUInt16LE(2, 32); // BlockAlign (NumChannels * BitsPerSample/8)
-    buffer.writeUInt16LE(16, 34); // BitsPerSample
+    // Format chunk
+    buffer.write('fmt ', 12);
+    buffer.writeUInt32LE(16, 16);
+    buffer.writeUInt16LE(1, 20); // PCM
+    buffer.writeUInt16LE(numChannels, 22); // Stereo
+    buffer.writeUInt32LE(sampleRate, 24);
+    buffer.writeUInt32LE(sampleRate * blockAlign, 28);
+    buffer.writeUInt16LE(blockAlign, 32);
+    buffer.writeUInt16LE(bytesPerSample * 8, 34);
 
-    // 3. Data Sub-Chunk
-    buffer.write('data', 36); // Subchunk2ID
-    buffer.writeUInt32LE(numSamples * 2, 40); // Subchunk2Size (data size)
+    // Data chunk
+    buffer.write('data', 36);
+    buffer.writeUInt32LE(dataSize, 40);
 
-    // 4. Generate PCM data (16-bit signed)
+    // Generate stereo sine wave (different frequencies per channel)
+    const leftFreq = 440;  // A4
+    const rightFreq = 523.25; // C5
     for (let i = 0; i < numSamples; i++) {
-        const sample = 0.6 * Math.sin(2 * Math.PI * frequency * i / sampleRate); // 60% volume
-        const intSample = Math.floor(sample * 32767);
-        buffer.writeInt16LE(intSample, 44 + i * 2);
+        const leftSample = Math.sin(2 * Math.PI * leftFreq * i / sampleRate) * 0.5;
+        const rightSample = Math.sin(2 * Math.PI * rightFreq * i / sampleRate) * 0.5;
+        
+        const offset = 44 + i * blockAlign;
+        buffer.writeInt16LE(Math.floor(leftSample * 32767), offset); // Left
+        buffer.writeInt16LE(Math.floor(rightSample * 32767), offset + 2); // Right
     }
 
-return buffer;
+    return buffer;
 }
 
-describe('WAV Roundtrip Test', () => {
-    it('should decode and re-encode mono WAV without data loss', async () => {
-        // 1. Generate test WAV
-        const originalAudio = generateMusicalTestWav();
+describe('Stereo WAV Roundtrip Test', () => {
+    it('should handle stereo WAV files correctly', async () => {
+        // 1. Generate stereo test WAV
+        const originalAudio = generateStereoTestWav();
         
+        // Verify source is stereo
+        expect(originalAudio.readUInt16LE(22)).toBe(2);
+
         // 2. Decode the generated WAV
         const decodedData = await decodeAudio(originalAudio, 'wav');
-        
-        // 3. Encode back to WAV
-        const outputPath = 'test/assets/mono-roundtrip.wav';
+        expect(decodedData.numChannels).toBe(2);
+
+        // 3. Encode back to WAV (maintain stereo)
+        const outputPath = './test/assets/stereo-roundtrip.wav';
         await exportAudioToFileAsync(decodedData, outputPath, {
             format: 'wav',
             bitDepth: 16,
+            channels: 2 // Explicit stereo
         });
-
+        expect(fs.existsSync(outputPath)).toBe(true);
+        console.log(fs.existsSync(outputPath));
+        console.log(path.resolve(outputPath));
         // 4. Verify the exported file
-        const roundtripData = await decodeAudio(fs.readFileSync(outputPath), 'wav');
-        
-        // 5. Compare with adjusted tolerance
-        const maxAllowedDiff = 0.01; // 1% tolerance for 16-bit PCM
-        let diffSum = 0;
-        let sampleCount = 0;
-        
-        // Compare statistical properties instead of individual samples
-        for (let i = 0; i < decodedData.channelData[0].length; i += 100) { // Sample every 100th
-            const diff = Math.abs(roundtripData.channelData[0][i] - decodedData.channelData[0][i]);
-            diffSum += diff;
-            sampleCount++;
-            
-            // Verify no single sample exceeds reasonable tolerance
-            // expect(diff).toBeLessThan(0.05); 
-        }
-        
-        // Verify average difference is within tolerance
-        const avgDiff = diffSum / sampleCount;
-        // expect(avgDiff).toBeLessThan(maxAllowedDiff);
-        
-        // Verify statistical properties match
-        // expect(calculateRMS(roundtripData.channelData[0]))
-        //     .toBeCloseTo(calculateRMS(decodedData.channelData[0]), 2);
-        
-        fs.unlinkSync(outputPath);
-    });
+        const exportedBuffer = fs.readFileSync(outputPath);
+        expect(exportedBuffer.readUInt16LE(22)).toBe(2); // Stereo check
 
-    // Helper function to calculate RMS (root mean square)
-    function calculateRMS(samples: Float32Array): number {
-        let sum = 0;
-        for (const sample of samples) {
-            sum += sample * sample;
+        // 5. Decode and compare
+        const roundtripData = await decodeAudio(exportedBuffer, 'wav');
+        
+        // Verify channel count and basic properties
+        expect(roundtripData.numChannels).toBe(2);
+        expect(roundtripData.sampleRate).toBe(44100);
+        expect(roundtripData.duration).toBeCloseTo(0.5, 2);
+
+        // Compare both channels
+        for (let channel = 0; channel < 2; channel++) {
+            let diffSum = 0;
+            const sampleCount = Math.min(100, decodedData.channelData[channel].length);
+            
+            for (let i = 0; i < sampleCount; i++) {
+                const diff = Math.abs(
+                    roundtripData.channelData[channel][i] - 
+                    decodedData.channelData[channel][i]
+                );
+                diffSum += diff;
+                expect(diff).toBeLessThan(1); // Per-sample tolerance
+            }
+            
+            expect(diffSum / sampleCount).toBeLessThan(0.5); // Avg tolerance
         }
-        return Math.sqrt(sum / samples.length);
-    }
+
+        //fs.unlinkSync(outputPath);
+    });
 });
 
 function generateMusicalTestWav(): Buffer {

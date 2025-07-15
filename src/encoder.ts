@@ -48,24 +48,24 @@ export class WavEncoder implements AudioEncoderBase {
 }
 
 function writeSample(buffer: Buffer, sample: number, offset: number, bitDepth: number): void {
-    const scaled = Math.max(-1, Math.min(1, sample)); // Clamp to [-1, 1]
+    const clamped = Math.max(-0.999969482421875, Math.min(0.999969482421875, sample));
 
     switch(bitDepth){
         case 8:
-            buffer.writeUint8(Math.floor((scaled + 1) * 127.5), offset);
+            buffer.writeUint8(Math.floor((clamped + 1) * 127.5), offset);
         break;
         case 16:
-            buffer.writeUint16LE(Math.floor(scaled * 32767), offset);
+            buffer.writeUint16LE(Math.floor(clamped * 32767), offset);
         break;
         case 24:
             buffer.writeIntLE(
-                Math.floor(scaled * 8388607),
+                Math.floor(clamped * 8388607),
                 offset,
                 3
             );
         break;
         case 32:
-            buffer.writeFloatLE(scaled, offset);
+            buffer.writeFloatLE(clamped, offset);
         break;
     }
 }
