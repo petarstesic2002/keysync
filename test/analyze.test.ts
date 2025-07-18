@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAudioAsync } from '../src/analyze';
-import { exportAudioToFileAsync } from '../src/export';
-import fs from 'fs';
-import { decodeAudio } from '../src/convert';
-import path from 'path';
 
 describe('analyzeAudioAsync', () => {
   it('detects bpm, key, and scale for a WAV file', async () => {

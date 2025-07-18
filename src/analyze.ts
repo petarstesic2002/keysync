@@ -1,22 +1,5 @@
 import { Essentia, EssentiaWASM } from 'essentia.js';
-import { AudioFormat, decodeAudio } from './convert';
-
-/**
- * Audio analysis result structure
- * @typedef {Object} AnalysisResult
- * @property {number|null} bpm - Precise BPM (float)
- * @property {number|null} roundedBpm - Rounded BPM (int)
- * @property {string|null} key - Detected musical key
- * @property {'major'|'minor'|null} scale - Detected musical scale
- * @property {number} [confidence] - Detection confidence (0 - 1)
- */
-export interface AnalysisResult {
-    bpm: number | null;
-    roundedBpm: number | null
-    key: string | null;
-    scale: 'major' | 'minor' | null;
-    confidence?: number;
-};
+import { AudioFormat, decodeAudioAsync } from './node/convert';
 
 let essentiaInstance: Essentia | null = null;
 
@@ -58,7 +41,7 @@ export function cleanupEssentia(): void{
 
 /**
  * Analyze a WAV audio buffer and extracts BPM, key and scale
- * @param {Buffer} buffer - Audio file buffer (WAV format recommended)
+ * @param {Buffer<ArrayBufferLike>} buffer - Audio file buffer (WAV format recommended)
  * @param {number} chunkSize - Optional chunk size samples (default 1323000 / 30s at 44.1kHz)
  * @param {AudioFormat} format - Audio format that will be decoded (WAV, MP3, FLAC, OGG)
  * @returns {Promise<AnalysisResult>} Object containing:
@@ -72,8 +55,8 @@ export function cleanupEssentia(): void{
  * const audioBuffer = await fs.readFile('track.wav');
  * const { roundedBpm, bpm, key, scale, confidence } = await analyzeAudioAsync(audioBuffer);
  */
-export async function analyzeAudioAsync(buffer: Buffer, format: AudioFormat, chunkSize: number = 44100 * 30): Promise<AnalysisResult> {
-    const decoded = await decodeAudio(buffer, format);
+export async function analyzeAudioAsync(buffer: Buffer<ArrayBufferLike>, format: AudioFormat, chunkSize: number = 44100 * 30): Promise<AnalysisResult> {
+    const decoded = await decodeAudioAsync(buffer, format);
     const audio = decoded.channelData[0];
 
     const result: AnalysisResult = {

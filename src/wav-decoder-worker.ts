@@ -1,6 +1,6 @@
 import { parentPort, workerData } from "worker_threads";
 import path from "path";
-import type { AudioData } from "./convert";
+import type { AudioData } from "./node/convert";
 import { fileURLToPath } from "url";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
