@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/node",
+    "lib": ["ES2020"],
+    "types": ["node"],
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "@/*": ["./src/node/*"]
+    }
+  },
+  "references": [
+    { "path": "./tsconfig.browser.json" }
+  ],
+  "include": ["src/node", "src/shared"],
+  "exclude": ["src/browser"]
+}

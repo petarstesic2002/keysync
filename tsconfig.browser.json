@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/browser",
+    "lib": ["ES2020", "DOM"],
+    "types": [],
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@/*": ["./src/browser/*"]
+    }
+  },
+  "references": [
+    { "path": "./tsconfig.node.json" }
+  ],
+  "include": ["src/browser", "src/shared"],
+  "exclude": ["src/node"]
+}

@@ -1,5 +1,6 @@
 import { Essentia, EssentiaWASM } from 'essentia.js';
-import { AudioFormat, decodeAudioAsync } from './node/convert';
+import { AudioFormat, AnalysisResult } from './shared/types/keysync-types';
+import { decodeAudioNodeAsync } from './node/convert';
 
 let essentiaInstance: Essentia | null = null;
 
@@ -37,8 +38,6 @@ export function cleanupEssentia(): void{
     essentiaInstance = null;
 }
 
-//TODO: make a function that converts other audio formats to wav
-
 /**
  * Analyze a WAV audio buffer and extracts BPM, key and scale
  * @param {Buffer<ArrayBufferLike>} buffer - Audio file buffer (WAV format recommended)
@@ -56,7 +55,7 @@ export function cleanupEssentia(): void{
  * const { roundedBpm, bpm, key, scale, confidence } = await analyzeAudioAsync(audioBuffer);
  */
 export async function analyzeAudioAsync(buffer: Buffer<ArrayBufferLike>, format: AudioFormat, chunkSize: number = 44100 * 30): Promise<AnalysisResult> {
-    const decoded = await decodeAudioAsync(buffer, format);
+    const decoded = await decodeAudioNodeAsync(buffer, format);
     const audio = decoded.channelData[0];
 
     const result: AnalysisResult = {

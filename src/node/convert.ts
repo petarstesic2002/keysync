@@ -1,7 +1,8 @@
 import decode from 'audio-decode';
 import { Worker } from 'worker_threads';
 import path from 'path';
-import { AudioFormat, AudioData } from '../types/keysync-types';
+import { AudioFormat, AudioData } from '../shared/types/keysync-types';
+import { decodeAudioBrowserAsync } from '../browser/convert';
 
 /**
  * Decodes audio data from various formats into standardized PCM format
@@ -12,7 +13,7 @@ import { AudioFormat, AudioData } from '../types/keysync-types';
  * @example
  * const audioData = await decodeAudioAsync(fileBuffer, 'mp3');
  */
-export async function decodeAudioAsync(
+export async function decodeAudioNodeAsync(
     buffer: Buffer,
     format: AudioFormat
 ): Promise<AudioData> {
@@ -22,40 +23,15 @@ export async function decodeAudioAsync(
         case 'mp3':
         case 'flac':
         case 'ogg':
-            return await decodeToCommonFormatAsync(buffer);
+            return await decodeAudioBrowserAsync(
+                buffer.buffer.slice(
+                    buffer.byteOffset,
+                    buffer.byteOffset + buffer.byteLength
+                ),
+                format
+            );
         default:
             throw new Error(`Unsupported audio format: ${format}`);
-    }
-}
-
-/**
- * Decodes compressed audio formats (MP3/FLAC/OGG) using Web Audio API compatible decoder
- * @private
- * @param {Buffer} buffer - Input audio buffer
- * @returns {Promise<AudioData>} Decoded audio data
- * @throws {Error} When decoding fails
- */
-async function decodeToCommonFormatAsync(buffer: Buffer): Promise<AudioData> {
-    try{
-        const arrBuffer: ArrayBuffer = buffer.buffer.slice(
-            buffer.byteOffset,
-            buffer.byteOffset + buffer.byteLength
-        );
-        const audioBuffer = await decode(arrBuffer);
-        
-        const channelData: Float32Array[] = [];
-        for(let c = 0; c < audioBuffer.numberOfChannels; c++)
-            channelData.push(audioBuffer.getChannelData(0));
-
-        return{
-            sampleRate: audioBuffer.sampleRate,
-            channelData,
-            numChannels: audioBuffer.numberOfChannels,
-            duration: audioBuffer.duration,
-            bitDepth: 32
-        };
-    } catch(err){
-        throw new Error(`MP3 decoding failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
